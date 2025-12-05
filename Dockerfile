@@ -1,14 +1,27 @@
-# Utiliser Eclipse Temurin 17 comme base
-FROM eclipse-temurin:17-jdk
+# Utiliser une image Java 17
+FROM eclipse-temurin:17-jdk as builder
 
 # Définir le répertoire de travail
 WORKDIR /app
 
-# Copier tous les fichiers
+# Copier les fichiers du projet
 COPY . .
 
-# Compiler le projet
-RUN ./mvnw clean package -DskipTests
+# Solution : Installer Maven directement et compiler
+RUN apt-get update && \
+    apt-get install -y maven && \
+    mvn clean package -DskipTests
 
-# Exécuter le jar généré
-CMD ["java", "-jar", "demo/target/demo-0.0.1-SNAPSHOT.jar"]
+# Deuxième étape pour une image plus légère
+FROM eclipse-temurin:17-jre
+
+WORKDIR /app
+
+# Copier le JAR généré depuis l'étape de build
+COPY --from=builder /app/target/*.jar app.jar
+
+# Exposer le port
+EXPOSE 8080
+
+# Commande pour lancer l'application
+ENTRYPOINT ["java", "-jar", "app.jar"]
