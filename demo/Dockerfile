@@ -1,29 +1,30 @@
-# Use OpenJDK 24 as the base image
-FROM eclipse-temurin:24-jdk-alpine
+# Étape de build
+FROM maven:3.9-eclipse-temurin-17 AS build
 
-# Set working directory
 WORKDIR /app
 
-# Copy Maven wrapper and pom.xml first (for better caching)
-COPY mvnw .
-COPY mvnw.cmd .
+# Copier d'abord le POM pour le cache Docker
 COPY pom.xml .
-COPY .mvn .mvn
 
-# Make mvnw executable
-RUN chmod +x ./mvnw
+# Télécharger les dépendances (mise en cache)
+RUN mvn dependency:go-offline -B
 
-# Download dependencies (this layer will be cached if pom.xml doesn't change)
-RUN ./mvnw dependency:go-offline -B
+# Copier le code source
+COPY src ./src
 
-# Copy source code
-COPY src src
+# Compiler l'application
+RUN mvn clean package -DskipTests
 
-# Build the application
-RUN ./mvnw clean package -DskipTests
+# Étape d'exécution
+FROM eclipse-temurin:17-jre
 
-# Expose port 8081 (your Spring Boot app port)
-EXPOSE 8081
+WORKDIR /app
 
-# Run the application
-CMD ["java", "-jar", "target/demo-0.0.1-SNAPSHOT.jar"]
+# Copier le JAR depuis l'étape de build
+COPY --from=build /app/target/*.jar app.jar
+
+# Exposer le port 8080
+EXPOSE 8080
+
+# Lancer l'application
+ENTRYPOINT ["java", "-jar", "app.jar"]
