@@ -1,14 +1,14 @@
-# Utiliser OpenJDK 17 comme base
-FROM openjdk:17-jdk-slim
+# Utiliser Eclipse Temurin 17 comme base
+FROM eclipse-temurin:17-jdk
 
 # Définir le répertoire de travail
 WORKDIR /app
 
-# Copier les fichiers Maven et le code source
+# Copier tous les fichiers
 COPY . .
 
-# Compiler le projet avec Maven Wrapper
+# Compiler le projet
 RUN ./mvnw clean package -DskipTests
 
-# Définir le jar à exécuter
+# Exécuter le jar généré
 CMD ["java", "-jar", "demo/target/demo-0.0.1-SNAPSHOT.jar"]
