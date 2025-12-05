@@ -1,23 +1,27 @@
-# Utiliser une image Java 17
-FROM eclipse-temurin:17-jdk as builder
+# Utiliser une image Java 17 avec Maven préinstallé
+FROM maven:3.9-eclipse-temurin-17 as builder
 
 # Définir le répertoire de travail
 WORKDIR /app
 
-# Copier les fichiers du projet
-COPY . .
+# Copier d'abord le pom.xml pour mieux gérer le cache Docker
+COPY pom.xml .
 
-# Solution : Installer Maven directement et compiler
-RUN apt-get update && \
-    apt-get install -y maven && \
-    mvn clean package -DskipTests
+# Télécharger les dépendances (cette étape est mise en cache si pom.xml ne change pas)
+RUN mvn dependency:go-offline -B
 
-# Deuxième étape pour une image plus légère
+# Copier le reste du code source
+COPY src ./src
+
+# Compiler le projet
+RUN mvn clean package -DskipTests
+
+# Deuxième étape pour l'exécution (image plus légère)
 FROM eclipse-temurin:17-jre
 
 WORKDIR /app
 
-# Copier le JAR généré depuis l'étape de build
+# Copier le JAR généré
 COPY --from=builder /app/target/*.jar app.jar
 
 # Exposer le port
